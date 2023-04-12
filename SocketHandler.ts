@@ -1,0 +1,72 @@
+import express from "express";
+import { Server } from "socket.io";
+import http from 'http';
+import { BoardPiece, type SanitizedPlayer, type Game } from './types/GameTypes';
+
+import { type AddressInfo } from 'net';
+
+import EventEmitter from 'events';
+
+class SocketHandler extends EventEmitter {
+    private io: Server<ClientToServerEvents, ServerToClientEvents>;
+
+    constructor() {
+        super();
+
+        const app = express();
+        const httpServer = http.createServer(app);
+        this.io = new Server(httpServer, {
+            cors: {
+                origin: "*",
+            }
+        });
+
+        this.io.on('connection', (socket) => {
+            const socketId = socket.id;
+            const ipAddress = (socket.request.socket.address() as AddressInfo).address;
+
+            this.emit('playerConnected', { socketId: socketId, ipAddress: ipAddress});
+            socket.on('disconnect', () => this.emit('disconnect', socketId ) );
+
+            socket.on('clientUpdate', (...args) => this.emit('clientUpdate', ...args));
+            socket.on('requestUsername', (username) => this.emit('requestUsername', socketId, username));
+        });
+
+        httpServer.listen(3001, () => {
+            console.log(`[SOCKET HANDLER] Listening on :3001`);
+        });
+    }
+
+    sendEvent<T extends keyof ServerToClientEvents>(socketId: string, event: T, ...payload: Parameters<ServerToClientEvents[T]>) {
+        this.findSocketById(socketId)?.emit(event, ...payload);
+    }
+
+    private findSocketById(id: string) {
+        for (const [socketId, socket] of this.io.sockets.sockets.entries()) {
+            if (id === id) {
+                return socket;
+            }
+        }
+
+        return null;
+    }
+
+    broadcastEvent<T extends keyof ServerToClientEvents>(event: T, ...payload: Parameters<ServerToClientEvents[T]>) {
+        this.io.emit(event, ...payload);
+    }
+}
+
+export interface ServerToClientEvents {
+    playerInformation: (id: number, playingFor: BoardPiece) => void;
+    history: (gameHistory: Array<Game>) => void;
+    playerList: (playerList: Array<SanitizedPlayer>) => void;
+    update: (gameId: number, boardId: number, squareId: number, updatedPiece: BoardPiece) => void;
+    end: (gameId: number, boardId: number | null, winner: BoardPiece, winningLine: Array<BoardPiece>) => void;
+}
+
+export interface ClientToServerEvents {
+    clientUpdate: (gameId: number, boardId: number, squareId: number, updatedPiece: BoardPiece) => void;
+    requestUsername: (username: string) => void;
+}
+
+export default SocketHandler;
