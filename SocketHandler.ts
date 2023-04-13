@@ -3,8 +3,6 @@ import { Server } from "socket.io";
 import http from 'http';
 import { BoardPiece, type SanitizedPlayer, type Game } from './types/GameTypes';
 
-import { type AddressInfo } from 'net';
-
 import EventEmitter from 'events';
 
 class SocketHandler extends EventEmitter {
@@ -23,7 +21,7 @@ class SocketHandler extends EventEmitter {
 
         this.io.on('connection', (socket) => {
             const socketId = socket.id;
-            const ipAddress = (socket.request.socket.address() as AddressInfo).address;
+            const ipAddress = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
 
             this.emit('playerConnected', { socketId: socketId, ipAddress: ipAddress});
             socket.on('disconnect', () => this.emit('disconnect', socketId ) );

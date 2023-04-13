@@ -123,9 +123,7 @@ socketHandler.on('clientUpdate', (gameId: number, boardId: number, squareId: num
                 socketHandler.broadcastEvent('end', games.length-1, null, gameWinner, gameWinningLine!);
 
                 setTimeout(() => {
-                    addNewGame();
-                    const history = games.slice(Math.max(games.length-SEND_HISTORY_LENGTH, 0), games.length);
-                    socketHandler.broadcastEvent('history', history);
+                    process.exit();
                 }, 3000);
             }
         }
