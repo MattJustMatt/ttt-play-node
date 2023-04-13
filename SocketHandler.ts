@@ -4,6 +4,7 @@ import http from 'http';
 import { BoardPiece, type SanitizedPlayer, type Game } from './types/GameTypes';
 
 import EventEmitter from 'events';
+import { instrument } from "@socket.io/admin-ui";
 
 class SocketHandler extends EventEmitter {
     private io: Server<ClientToServerEvents, ServerToClientEvents>;
@@ -17,6 +18,11 @@ class SocketHandler extends EventEmitter {
             cors: {
                 origin: "*",
             }
+        });
+
+        instrument(this.io, {
+            auth: false,
+            mode: "development",
         });
 
         this.io.on('connection', (socket) => {
