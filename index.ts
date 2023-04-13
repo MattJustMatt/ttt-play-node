@@ -27,7 +27,7 @@ socketHandler.on('playerConnected', (playerInfo) => {
     connectedPlayers.set(playerInfo.socketId, player);
 
     // Let them know who they're playing for
-    socketHandler.sendEvent(playerInfo.socketId, 'playerInformation', player.id, player.playingFor!);
+    socketHandler.sendEvent(playerInfo.socketId, 'playerInformation', player.id, player.username, player.playingFor!);
 
     // Get them caught up on history
     const history = games.slice(Math.max(games.length-SEND_HISTORY_LENGTH, 0), games.length);
@@ -80,6 +80,7 @@ function getTeamForNewPlayer(): BoardPiece {
     const totalOs = Array.from(connectedPlayers.values()).filter((player) => player.playingFor === BoardPiece.O).length;
 
     console.log(`[TEAM] curX ${totalXs} curO ${totalOs}`);
+    if (totalXs === 0) return BoardPiece.X; // Needed to start fresh games
 
     if (totalXs === totalOs) return Math.random() > 0.5 ? BoardPiece.X : BoardPiece.O;
     if (totalOs > totalXs) return BoardPiece.X;
@@ -92,8 +93,10 @@ function getFromPlayerHistory(player: Player) {
     return playerHistory.find((historyPlayer) => historyPlayer.ipAddr === player.ipAddr);
 }
 
-socketHandler.on('clientUpdate', (gameId: number, boardId: number, squareId: number, updatedPiece: BoardPiece) => {
+socketHandler.on('clientUpdate', (socketId, gameId: number, boardId: number, squareId: number, updatedPiece: BoardPiece) => {
     try {
+        const player = connectedPlayers.get(socketId)!;
+
         if (games.length === 0) throw new Error("Received client update, but there were no games to update");
         const latestGame = games[games.length-1];
     
@@ -104,10 +107,12 @@ socketHandler.on('clientUpdate', (gameId: number, boardId: number, squareId: num
         
         // TODO: Check move validity
         boardToUpdate.positions[squareId] = updatedPiece;
+        player.score += 15;
         socketHandler.broadcastEvent('update', latestGame.id, boardId, squareId, updatedPiece);
 
         const [winner, winningLine] = calculateWinner(boardToUpdate.positions);
         if (winner) {
+            player.score += 100;
             boardToUpdate.winner = winner;
             boardToUpdate.winningLine = winningLine;
             socketHandler.broadcastEvent('end', games.length-1, boardToUpdate.id, winner, winningLine!);
@@ -117,6 +122,7 @@ socketHandler.on('clientUpdate', (gameId: number, boardId: number, squareId: num
             const [gameWinner, gameWinningLine] = calculateWinner(positionsFromBoards);
 
             if (gameWinner) {
+                player.score += 500;
                 console.log("WINNER WINNER ", gameWinningLine)
                 latestGame.winner = winner;
                 latestGame.winningLine = winningLine;
@@ -124,7 +130,7 @@ socketHandler.on('clientUpdate', (gameId: number, boardId: number, squareId: num
 
                 setTimeout(() => {
                     process.exit();
-                }, 3000);
+                }, 10000);
             }
         }
 

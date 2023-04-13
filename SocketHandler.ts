@@ -26,7 +26,7 @@ class SocketHandler extends EventEmitter {
             this.emit('playerConnected', { socketId: socketId, ipAddress: ipAddress});
             socket.on('disconnect', () => this.emit('disconnect', socketId ) );
 
-            socket.on('clientUpdate', (...args) => this.emit('clientUpdate', ...args));
+            socket.on('clientUpdate', (...args) => this.emit('clientUpdate', socketId, ...args));
             socket.on('requestUsername', (username) => this.emit('requestUsername', socketId, username));
         });
 
@@ -55,7 +55,7 @@ class SocketHandler extends EventEmitter {
 }
 
 export interface ServerToClientEvents {
-    playerInformation: (id: number, playingFor: BoardPiece) => void;
+    playerInformation: (id: number, username: string | null, playingFor: BoardPiece) => void;
     history: (gameHistory: Array<Game>) => void;
     playerList: (playerList: Array<SanitizedPlayer>) => void;
     update: (gameId: number, boardId: number, squareId: number, updatedPiece: BoardPiece) => void;
