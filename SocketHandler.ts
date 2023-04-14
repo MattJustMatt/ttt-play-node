@@ -4,7 +4,6 @@ import http from 'http';
 import { BoardPiece, type SanitizedPlayer, type Game } from './types/GameTypes';
 
 import EventEmitter from 'events';
-import { instrument } from "@socket.io/admin-ui";
 
 class SocketHandler extends EventEmitter {
     private io: Server<ClientToServerEvents, ServerToClientEvents>;
@@ -20,20 +19,16 @@ class SocketHandler extends EventEmitter {
             }
         });
 
-        instrument(this.io, {
-            auth: false,
-            mode: "development",
-        });
-
         this.io.on('connection', (socket) => {
             const socketId = socket.id;
             const ipAddress = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
+            const authUsername = socket.handshake.auth.username;
 
-            this.emit('playerConnected', { socketId: socketId, ipAddress: ipAddress});
+            this.emit('playerConnected', socketId, ipAddress, authUsername);
             socket.on('disconnect', () => this.emit('disconnect', socketId ) );
 
             socket.on('clientUpdate', (...args) => this.emit('clientUpdate', socketId, ...args));
-            socket.on('requestUsername', (username) => this.emit('requestUsername', socketId, username));
+            socket.on('requestUsername', (username, callback) => this.emit('requestUsername', socketId, username, callback));
         });
 
         httpServer.listen(3001, () => {
@@ -47,7 +42,7 @@ class SocketHandler extends EventEmitter {
 
     private findSocketById(id: string) {
         for (const [socketId, socket] of this.io.sockets.sockets.entries()) {
-            if (id === id) {
+            if (id === socketId) {
                 return socket;
             }
         }
@@ -70,7 +65,7 @@ export interface ServerToClientEvents {
 
 export interface ClientToServerEvents {
     clientUpdate: (gameId: number, boardId: number, squareId: number, updatedPiece: BoardPiece) => void;
-    requestUsername: (username: string) => void;
+    requestUsername: (username: string, callback: (response: { code: number, message: string}) => void) => void;
 }
 
 export default SocketHandler;

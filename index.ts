@@ -6,55 +6,67 @@ import { calculateWinner, generatePositionsFromBoards } from './utils';
 
 const SEND_HISTORY_LENGTH = config.SEND_HISTORY_LENGTH;
 let games: Array<Game> = [];
-const playerHistory: Array<Player> = [];
+const playerHistory: Map<string, Player> = new Map();
 const connectedPlayers: Map<string, Player> = new Map();
 
 const socketHandler = new SocketHandler();
 
-socketHandler.on('playerConnected', (playerInfo) => {
-    let player = new Player(playerHistory.length, playerInfo.ipAddress);
-    
-    const playerLookup = getFromPlayerHistory(player);
-    if (!playerLookup) {
-        console.log(`[PLAYER MANAGER] Player at ${player.ipAddr} is NEW!`);
-        player.playingFor = getTeamForNewPlayer();
-        playerHistory.push(player);
+enum ScoreValues {
+    ANY_MOVE = 5,
+    WIN_BOARD = 200,
+    WIN_GAME = 1000,
+}
+
+socketHandler.on('playerConnected', (socketId, ipAddress, authUsername) => {
+    let player: Player;
+    if (authUsername && validateUsernameForPlayer(ipAddress, authUsername)) {
+        player = new Player(playerHistory.size, ipAddress, authUsername);
     } else {
-        player = playerLookup;
-        console.log(`[PLAYER MANAGER] Player at ${player.ipAddr} is returning! Welcome!`);
+        player = new Player(playerHistory.size, ipAddress);
     }
 
-    connectedPlayers.set(playerInfo.socketId, player);
+    const playerFromLookup = playerHistory.get(socketId);
+    if (!playerFromLookup) {
+        console.log(`[NEW PLAYER CONNECTED] ${socketId}@${ipAddress}`);
+        player.playingFor = getTeamForNewPlayer();
+        playerHistory.set(socketId, player);
+    } else {
+        player = playerFromLookup;
+        console.log(`[RETURNING PLAYER CONNECTED] ${socketId}@${ipAddress}`);
+    }
+
+    connectedPlayers.set(socketId, player);
 
     // Let them know who they're playing for
-    socketHandler.sendEvent(playerInfo.socketId, 'playerInformation', player.id, player.username, player.playingFor!);
+    socketHandler.sendEvent(socketId, 'playerInformation', player.id, player.username, player.playingFor!);
 
     // Get them caught up on history
     const history = games.slice(Math.max(games.length-SEND_HISTORY_LENGTH, 0), games.length);
-    socketHandler.sendEvent(playerInfo.socketId, 'history', history);
+    socketHandler.sendEvent(socketId, 'history', history);
 });
 
-socketHandler.on('requestUsername', (socketId, username) => {
-    
+socketHandler.on('requestUsername', (socketId, username, respond) => {
     let player = connectedPlayers.get(socketId);
-
-    let playerWithUsername = playerHistory.find((player) => player.username === username);
 
     console.log(`Socket ${socketId} at IP ${player?.ipAddr} requested username ${username}`);
 
     // If it's not taken OR if it was taken by someone with the same IP they're allowed to have it
-    if (!playerWithUsername || playerWithUsername.ipAddr === player!.ipAddr) {
+    if (validateUsernameForPlayer(player.ipAddr, username)) {
         player!.username = username;
-        // TODO ACK
+        respond({ code: 200, message: "Success!" });
     } else {
-        // TODO NACK
+        respond({ code: 403, message: "This username was already registered. To reclaim it, log in with your original IP address or contact support matthewsalsamendi@gmail.com" });
     }
 });
 
-function resetInator() {
-    games = games.slice(0, 0);
-    addNewGame();
+function validateUsernameForPlayer(ipAddress: string, username: string) {
+    let playerWithUsername = Array.from(playerHistory.values()).find((player) => player.username === username);
+    
+    if (!playerWithUsername || playerWithUsername.ipAddr === ipAddress) {
+        return true;
+    }
 
+    return false;
 }
 
 socketHandler.on('disconnect', (socketId) => {
@@ -63,7 +75,7 @@ socketHandler.on('disconnect', (socketId) => {
 });
 
 setInterval(() => {
-    const playerList = Array.from(connectedPlayers.values()).slice().map((player) => {
+    const playerList = Array.from(connectedPlayers.values()).slice().sort((a, b) => b.score - a.score).map((player) => {
         return {
             id: player.id,
             username: player.username,
@@ -89,10 +101,6 @@ function getTeamForNewPlayer(): BoardPiece {
     throw Error("Could not determine team for new player");
 }
 
-function getFromPlayerHistory(player: Player) {
-    return playerHistory.find((historyPlayer) => historyPlayer.ipAddr === player.ipAddr);
-}
-
 socketHandler.on('clientUpdate', (socketId, gameId: number, boardId: number, squareId: number, updatedPiece: BoardPiece) => {
     try {
         const player = connectedPlayers.get(socketId)!;
@@ -104,15 +112,20 @@ socketHandler.on('clientUpdate', (socketId, gameId: number, boardId: number, squ
         let boardToUpdate = latestGame.boards[boardId];
     
         if (boardToUpdate.positions[squareId] !== 0) throw new Error(`Requested update on game ${latestGame.id} board ${boardToUpdate.id} square ${ squareId } but it was already occupied (${boardToUpdate.positions[squareId]})`);
+        if (updatedPiece !== latestGame.nextPiece) throw new Error(`Invalid board piece requested. ${latestGame.nextPiece} should've been the next piece but ${updatedPiece} was requested`);
+        if (player.playingFor !== updatedPiece) throw new Error(`Player ${player.ipAddr}@${socketId} sent update for piece ${updatedPiece} that wasn't theres! ${player.playingFor}`);
         
-        // TODO: Check move validity
+        
+        // -- From here on out the move is assumed to be valid -- //
         boardToUpdate.positions[squareId] = updatedPiece;
-        player.score += 15;
+        latestGame.nextPiece = latestGame.nextPiece === BoardPiece.X ? BoardPiece.O : BoardPiece.X;
+
+        player.score += ScoreValues.ANY_MOVE;
         socketHandler.broadcastEvent('update', latestGame.id, boardId, squareId, updatedPiece);
 
         const [winner, winningLine] = calculateWinner(boardToUpdate.positions);
         if (winner) {
-            player.score += 100;
+            player.score += ScoreValues.WIN_BOARD;
             boardToUpdate.winner = winner;
             boardToUpdate.winningLine = winningLine;
             socketHandler.broadcastEvent('end', games.length-1, boardToUpdate.id, winner, winningLine!);
@@ -122,23 +135,31 @@ socketHandler.on('clientUpdate', (socketId, gameId: number, boardId: number, squ
             const [gameWinner, gameWinningLine] = calculateWinner(positionsFromBoards);
 
             if (gameWinner) {
-                player.score += 500;
+                player.score += ScoreValues.WIN_GAME;
                 console.log("WINNER WINNER ", gameWinningLine)
                 latestGame.winner = winner;
                 latestGame.winningLine = winningLine;
                 socketHandler.broadcastEvent('end', games.length-1, null, gameWinner, gameWinningLine!);
 
                 setTimeout(() => {
-                    process.exit();
+                    resetGames();
                 }, 10000);
             }
         }
-
-        // TODO: Check game win
     } catch (err: any) { 
         console.log(`Invalid client event (${err.message})`);
     }
 });
+
+function resetGames() {
+    console.log("RESETTING GAMES!");
+    games = [];
+    addNewGame();
+
+    // Get them caught up on history
+    const history = games.slice(Math.max(games.length-SEND_HISTORY_LENGTH, 0), games.length);
+    socketHandler.broadcastEvent('history', history);
+}
 
 function addNewGame() {
     const freshBoards = Array.from({length: 9}).map((_, index) => {

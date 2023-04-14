@@ -7,11 +7,11 @@ class Player {
     playingFor: BoardPiece | null;
     score: number;
 
-    constructor(id: number, ipAddr: string) {
+    constructor(id: number, ipAddr: string, username?: string) {
         this.id = id;
         this.ipAddr = ipAddr;
 
-        this.username = null;
+        this.username = username || null;
         this.playingFor = null;
 
         this.score = 0;
