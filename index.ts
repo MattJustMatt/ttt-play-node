@@ -2,7 +2,7 @@ import SocketHandler from './SocketHandler';
 import config from './config';
 import { BoardPiece, Game, SanitizedPlayer } from './types/GameTypes';
 import Player from './Player';
-import { calculateWinner, generatePositionsFromBoards } from './utils';
+import { searchWinner as searchWinner, generatePositionsFromBoards } from './utils';
 
 const SEND_HISTORY_LENGTH = config.SEND_HISTORY_LENGTH;
 let games: Array<Game> = [];
@@ -128,23 +128,29 @@ socketHandler.on('clientUpdate', (socketId, gameId: number, boardId: number, squ
         player.score += ScoreValues.ANY_MOVE;
         socketHandler.broadcastEvent('update', latestGame.id, boardId, squareId, updatedPiece);
 
-        const [winner, winningLine] = calculateWinner(boardToUpdate.positions);
-        if (winner) {
-            player.score += ScoreValues.WIN_BOARD;
+        const [winner, winningLine] = searchWinner(boardToUpdate.positions);
+        if (winner !== null) {
+            if (winner !== BoardPiece.DRAW) {
+                player.score += ScoreValues.WIN_BOARD;
+            }
+            
             boardToUpdate.winner = winner;
             boardToUpdate.winningLine = winningLine;
-            socketHandler.broadcastEvent('end', games.length-1, boardToUpdate.id, winner, winningLine!);
+            socketHandler.broadcastEvent('end', games.length-1, boardToUpdate.id, winner, winningLine);
 
             // Check if the entire game was won too!
             const positionsFromBoards = generatePositionsFromBoards(games[games.length-1].boards);
-            const [gameWinner, gameWinningLine] = calculateWinner(positionsFromBoards);
+            const [gameWinner, gameWinningLine] = searchWinner(positionsFromBoards);
 
-            if (gameWinner) {
-                player.score += ScoreValues.WIN_GAME;
+            if (gameWinner !== null) {
+                if (gameWinner !== BoardPiece.DRAW) {
+                    player.score += ScoreValues.WIN_GAME;
+                }
+                
                 console.log("WINNER WINNER ", gameWinningLine)
                 latestGame.winner = winner;
                 latestGame.winningLine = winningLine;
-                socketHandler.broadcastEvent('end', games.length-1, null, gameWinner, gameWinningLine!);
+                socketHandler.broadcastEvent('end', games.length-1, null, gameWinner, gameWinningLine);
 
                 setTimeout(() => {
                     resetGames();
