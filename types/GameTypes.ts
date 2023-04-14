@@ -18,6 +18,7 @@ export type SanitizedPlayer = {
     username: string | null;
     playingFor: BoardPiece;
     score: number;
+    online: boolean;
 }
 
 export enum BoardPiece {

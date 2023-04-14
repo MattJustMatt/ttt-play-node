@@ -19,13 +19,18 @@ enum ScoreValues {
 
 socketHandler.on('playerConnected', (socketId, ipAddress, authUsername) => {
     let player: Player;
+    let playerFromLookup = Array.from(playerHistory.values()).find((player) => player.username === authUsername);
+
     if (authUsername && validateUsernameForPlayer(ipAddress, authUsername)) {
         player = new Player(playerHistory.size, ipAddress, authUsername);
     } else {
         player = new Player(playerHistory.size, ipAddress);
+
+        // Invalidate their access if the username wasn't allowed (IP mismatch);
+        playerFromLookup = null;
     }
 
-    const playerFromLookup = playerHistory.get(socketId);
+    
     if (!playerFromLookup) {
         console.log(`[NEW PLAYER CONNECTED] ${socketId}@${ipAddress}`);
         player.playingFor = getTeamForNewPlayer();
@@ -75,12 +80,13 @@ socketHandler.on('disconnect', (socketId) => {
 });
 
 setInterval(() => {
-    const playerList = Array.from(connectedPlayers.values()).slice().sort((a, b) => b.score - a.score).map((player) => {
+    const playerList = Array.from(playerHistory.values()).slice().sort((a, b) => b.score - a.score).map((player) => {
         return {
             id: player.id,
             username: player.username,
             playingFor: player.playingFor!,
             score: player.score,
+            online: Array.from(connectedPlayers.values()).includes(player)
         };
     });
 
