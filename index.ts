@@ -32,8 +32,9 @@ socketHandler.on('playerConnected', (socketId, ipAddress, authUsername) => {
 
     
     if (!playerFromLookup) {
-        console.log(`[NEW PLAYER CONNECTED] ${socketId}@${ipAddress}`);
+        
         player.playingFor = getTeamForNewPlayer();
+        console.log(`[NEW PLAYER CONNECTED] ${socketId}@${ipAddress} assigned piece ${player.playingFor}`);
         playerHistory.set(socketId, player);
     } else {
         player = playerFromLookup;
@@ -98,9 +99,7 @@ function getTeamForNewPlayer(): BoardPiece {
     const totalOs = Array.from(connectedPlayers.values()).filter((player) => player.playingFor === BoardPiece.O).length;
 
     console.log(`[TEAM] curX ${totalXs} curO ${totalOs}`);
-    if (totalXs === 0) return BoardPiece.X; // Needed to start fresh games
-
-    if (totalXs === totalOs) return Math.random() > 0.5 ? BoardPiece.X : BoardPiece.O;
+    if (totalXs === totalOs) return games[games.length-1].nextPiece;
     if (totalOs > totalXs) return BoardPiece.X;
     if (totalXs > totalOs) return BoardPiece.O;
 
