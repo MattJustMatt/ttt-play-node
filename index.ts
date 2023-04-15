@@ -51,6 +51,8 @@ socketHandler.on('playerConnected', (socketId, ipAddress, authUsername) => {
   // Get them caught up on history
   const history = games.slice(Math.max(games.length-SEND_HISTORY_LENGTH, 0), games.length);
   socketHandler.sendEvent(socketId, 'history', history);
+
+  broadcastPlayerList();
 });
 
 socketHandler.on('requestUsername', (socketId: string, username: string, respond: (response: { code: number, message: string}) => void) => {
@@ -73,15 +75,17 @@ socketHandler.on('requestUsername', (socketId: string, username: string, respond
 
   player.username = username;
   respond({ code: 200, message: "Success!" });
+  broadcastPlayerList();
 });
 
 socketHandler.on('disconnect', (socketId) => {
   console.log(`${connectedPlayers.get(socketId)?.ipAddr} disconnected`);
   connectedPlayers.delete(socketId);
+  broadcastPlayerList();
 });
 
-setInterval(() => {
-  const playerList = Array.from(playerHistory.values()).slice().sort((a, b) => b.score - a.score).map((player) => {
+function getSanitizedPlayerList() {
+  return Array.from(playerHistory.values()).filter(player => player.username !== null).sort((a, b) => b.score - a.score).map((player) => {
     return {
       id: player.id,
       username: player.username,
@@ -90,9 +94,11 @@ setInterval(() => {
       online: Array.from(connectedPlayers.values()).includes(player)
     };
   });
+}
 
-  socketHandler.broadcastEvent('playerList', playerList);
-}, 200);
+function broadcastPlayerList() {
+  socketHandler.broadcastEvent('playerList', getSanitizedPlayerList());
+}
 
 socketHandler.on('clientUpdate', (socketId, gameId: number, boardId: number, squareId: number, updatedPiece: BoardPiece) => {
   try {
@@ -145,6 +151,8 @@ socketHandler.on('clientUpdate', (socketId, gameId: number, boardId: number, squ
         }, RESET_DELAY);
       }
     }
+
+    broadcastPlayerList();
   } catch (err: any) { 
     console.log(`Invalid client event (${err.message})`);
   }
