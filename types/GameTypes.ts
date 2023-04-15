@@ -8,10 +8,11 @@ export type Board = {
 export type Game = {
     id: number;
     boards: Array<Board>;
-    winner: number | null;
+    winner: BoardPiece | null;
     winningLine: Array<number> | null;
     nextPiece: BoardPiece;
-};
+    winnerUsername: string | null;
+  };
 
 export type SanitizedPlayer = {
     id: number;

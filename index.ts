@@ -130,7 +130,7 @@ socketHandler.on('clientUpdate', (socketId, gameId: number, boardId: number, squ
       
       boardToUpdate.winner = winner;
       boardToUpdate.winningLine = winningLine;
-      socketHandler.broadcastEvent('end', games.length-1, boardToUpdate.id, winner, winningLine);
+      socketHandler.broadcastEvent('end', games.length-1, boardToUpdate.id, winner, winningLine, connectedPlayers.get(socketId)?.username!);
 
       // Check if the entire game was won too!
       const positionsFromBoards = generatePositionsFromBoards(games[games.length-1].boards);
@@ -144,7 +144,8 @@ socketHandler.on('clientUpdate', (socketId, gameId: number, boardId: number, squ
         console.log("WINNER WINNER ", gameWinningLine)
         latestGame.winner = winner;
         latestGame.winningLine = winningLine;
-        socketHandler.broadcastEvent('end', games.length-1, null, gameWinner, gameWinningLine);
+        latestGame.winnerUsername = connectedPlayers.get(socketId)?.username!;
+        socketHandler.broadcastEvent('end', games.length-1, null, gameWinner, gameWinningLine, connectedPlayers.get(socketId)?.username!);
 
         setTimeout(() => {
           resetGames();
@@ -206,6 +207,7 @@ function addNewGame() {
     winner: null,
     winningLine: null,
     nextPiece: BoardPiece.X,
+    winnerUsername: null,
   });
 }
 
