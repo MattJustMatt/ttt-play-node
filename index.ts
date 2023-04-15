@@ -7,7 +7,7 @@ import { searchWinner as searchWinner, generatePositionsFromBoards } from './uti
 import badWords from './somebadwords';
 
 const SEND_HISTORY_LENGTH = config.SEND_HISTORY_LENGTH;
-const RESET_DELAY = 10000;
+const RESET_DELAY = 15000;
 
 let games: Array<Game> = [];
 const playerHistory: Map<string, Player> = new Map();
