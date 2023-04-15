@@ -61,6 +61,10 @@ socketHandler.on('requestUsername', (socketId, username, respond) => {
     return;
   }
 
+  if (username.toLowerCase().includes("fuck")) {
+    respond({ code: 418, message: "There's something strange about your username... try a different one!"})
+  }
+
   player.username = username;
   respond({ code: 200, message: "Success!" });
 });
@@ -158,7 +162,7 @@ socketHandler.on('clientUpdate', (socketId, gameId: number, boardId: number, squ
       }
     }
   } catch (err: any) { 
-      console.log(`Invalid client event (${err.message})`);
+    console.log(`Invalid client event (${err.message})`);
   }
 });
 
