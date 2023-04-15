@@ -60,7 +60,7 @@ export interface ServerToClientEvents {
     history: (gameHistory: Array<Game>) => void;
     playerList: (playerList: Array<SanitizedPlayer>) => void;
     update: (gameId: number, boardId: number, squareId: number, updatedPiece: BoardPiece) => void;
-    end: (gameId: number, boardId: number | null, winner: BoardPiece, winningLine: Array<BoardPiece>) => void;
+    end: (gameId: number, boardId: number | null, winner: BoardPiece, winningLine: Array<number> | null) => void;
 }
 
 export interface ClientToServerEvents {
