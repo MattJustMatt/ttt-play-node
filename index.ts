@@ -4,6 +4,8 @@ import { BoardPiece, Game, SanitizedPlayer } from './types/GameTypes';
 import Player from './Player';
 import { searchWinner as searchWinner, generatePositionsFromBoards } from './utils';
 
+import badWords from './somebadwords';
+
 const SEND_HISTORY_LENGTH = config.SEND_HISTORY_LENGTH;
 const RESET_DELAY = 10000;
 
@@ -51,8 +53,9 @@ socketHandler.on('playerConnected', (socketId, ipAddress, authUsername) => {
   socketHandler.sendEvent(socketId, 'history', history);
 });
 
-socketHandler.on('requestUsername', (socketId, username, respond) => {
+socketHandler.on('requestUsername', (socketId: string, username: string, respond: (response: { code: number, message: string}) => void) => {
   let player = connectedPlayers.get(socketId)!;
+  username = username.trim();
 
   console.log(`Socket ${socketId} at IP ${player?.ipAddr} requested username ${username}`);
 
@@ -61,23 +64,16 @@ socketHandler.on('requestUsername', (socketId, username, respond) => {
     return;
   }
 
-  if (username.toLowerCase().includes("fuck")) {
-    respond({ code: 418, message: "There's something strange about your username... try a different one!"})
+  for (let i = 0; i < badWords.length; i++) {
+    if (username.toLowerCase().includes(badWords[i])) {
+      respond({ code: 418, message: "There's something strange about your username... try a different one!"})
+      return;
+    }
   }
 
   player.username = username;
   respond({ code: 200, message: "Success!" });
 });
-
-function ipOwnsUsername(ipAddress: string, username: string) {
-  let playerWithUsername = Array.from(playerHistory.values()).find((player) => player.username === username);
-  
-  if (!playerWithUsername || playerWithUsername.ipAddr === ipAddress) {
-    return true;
-  }
-
-  return false;
-}
 
 socketHandler.on('disconnect', (socketId) => {
   console.log(`${connectedPlayers.get(socketId)?.ipAddr} disconnected`);
@@ -97,18 +93,6 @@ setInterval(() => {
 
   socketHandler.broadcastEvent('playerList', playerList);
 }, 200);
-
-function getTeamForNewPlayer(): BoardPiece {
-  const totalXs = Array.from(connectedPlayers.values()).filter((player) => player.playingFor === BoardPiece.X).length;
-  const totalOs = Array.from(connectedPlayers.values()).filter((player) => player.playingFor === BoardPiece.O).length;
-
-  console.log(`[TEAM] curX ${totalXs} curO ${totalOs}`);
-  if (totalXs === totalOs) return games[games.length-1].nextPiece;
-  if (totalOs > totalXs) return BoardPiece.X;
-  if (totalXs > totalOs) return BoardPiece.O;
-
-  throw Error("Could not determine team for new player");
-}
 
 socketHandler.on('clientUpdate', (socketId, gameId: number, boardId: number, squareId: number, updatedPiece: BoardPiece) => {
   try {
@@ -165,6 +149,28 @@ socketHandler.on('clientUpdate', (socketId, gameId: number, boardId: number, squ
     console.log(`Invalid client event (${err.message})`);
   }
 });
+
+function ipOwnsUsername(ipAddress: string, username: string) {
+  let playerWithUsername = Array.from(playerHistory.values()).find((player) => player.username === username);
+  
+  if (!playerWithUsername || playerWithUsername.ipAddr === ipAddress) {
+    return true;
+  }
+
+  return false;
+}
+
+function getTeamForNewPlayer(): BoardPiece {
+  const totalXs = Array.from(connectedPlayers.values()).filter((player) => player.playingFor === BoardPiece.X).length;
+  const totalOs = Array.from(connectedPlayers.values()).filter((player) => player.playingFor === BoardPiece.O).length;
+
+  console.log(`[TEAM] curX ${totalXs} curO ${totalOs}`);
+  if (totalXs === totalOs) return games[games.length-1].nextPiece;
+  if (totalOs > totalXs) return BoardPiece.X;
+  if (totalXs > totalOs) return BoardPiece.O;
+
+  throw Error("Could not determine team for new player");
+}
 
 function resetGames() {
   console.log("RESETTING GAMES!");
