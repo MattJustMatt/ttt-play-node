@@ -62,7 +62,7 @@ export interface ServerToClientEvents {
   playerList: (playerList: Array<SanitizedPlayer>) => void;
   update: (gameId: number, boardId: number, squareId: number, updatedPiece: BoardPiece) => void;
   end: (gameId: number, boardId: number | null, winner: BoardPiece, winningLine: Array<number> | null, winnerUsername: string) => void;
-  emote: (username: string, emoteSlug: string) => void;
+  emote: (playerId: number, emoteSlug: string) => void;
 }
 
 export interface ClientToServerEvents {

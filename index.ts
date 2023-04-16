@@ -117,7 +117,7 @@ socketHandler.on('emote', (socketId: string, emoteSlug: string) => {
   if (player.emotesPerLargeInterval < MAX_EMOTES_PER_10S) {
     player.emotesPerLargeInterval++;
   
-      socketHandler.broadcastEvent('emote', player.username!, emoteSlug);
+      socketHandler.broadcastEvent('emote', player.id!, emoteSlug);
   } else {
     socketHandler.sendEvent(socketId, 'playerInformation', player.id, player.username, player.playingFor!, false)
   }
