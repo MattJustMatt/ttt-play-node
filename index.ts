@@ -7,6 +7,7 @@ import { searchWinner as searchWinner, generatePositionsFromBoards } from './uti
 import badWords from './somebadwords';
 
 const SEND_HISTORY_LENGTH = config.SEND_HISTORY_LENGTH;
+const MAX_EMOTES_PER_10S = 3;
 const RESET_DELAY = 15000;
 
 let games: Array<Game> = [];
@@ -21,14 +22,24 @@ enum ScoreValues {
   WIN_GAME = 1000,
 }
 
+
+
 socketHandler.on('playerConnected', (socketId, ipAddress, authUsername) => {
   let shellPlayer: Player;
   let playerFromLookup: Player | undefined = Array.from(playerHistory.values()).find((player) => player.username === authUsername);
 
+  const onCanSendEmotes = () => {
+    const connectedPlayer = connectedPlayers.get(socketId);
+
+    if (connectedPlayer) {
+      socketHandler.sendEvent(socketId, 'playerInformation', connectedPlayer.id, connectedPlayer.username, connectedPlayer.playingFor!, true);
+    }
+  }
+
   if (authUsername && ipOwnsUsername(ipAddress, authUsername)) {
-    shellPlayer = new Player(playerHistory.size, ipAddress, authUsername);
+    shellPlayer = new Player(playerHistory.size, ipAddress, onCanSendEmotes, authUsername);
   } else {
-    shellPlayer = new Player(playerHistory.size, ipAddress);
+    shellPlayer = new Player(playerHistory.size, ipAddress, onCanSendEmotes);
 
     // Invalidate their access if the username wasn't allowed (IP mismatch);
     playerFromLookup = undefined;
@@ -46,7 +57,7 @@ socketHandler.on('playerConnected', (socketId, ipAddress, authUsername) => {
   connectedPlayers.set(socketId, shellPlayer);
 
   // Let them know who they're playing for
-  socketHandler.sendEvent(socketId, 'playerInformation', shellPlayer.id, shellPlayer.username, shellPlayer.playingFor!);
+  socketHandler.sendEvent(socketId, 'playerInformation', shellPlayer.id, shellPlayer.username, shellPlayer.playingFor!, true);
 
   // Get them caught up on history
   const history = games.slice(Math.max(games.length-SEND_HISTORY_LENGTH, 0), games.length);
@@ -100,6 +111,18 @@ function broadcastPlayerList() {
   socketHandler.broadcastEvent('playerList', getSanitizedPlayerList());
 }
 
+socketHandler.on('emote', (socketId: string, emoteSlug: string) => {
+  const player = connectedPlayers.get(socketId)!;
+
+  if (player.emotesPerLargeInterval < MAX_EMOTES_PER_10S) {
+    player.emotesPerLargeInterval++;
+  
+      socketHandler.broadcastEvent('emote', player.username!, emoteSlug);
+  } else {
+    socketHandler.sendEvent(socketId, 'playerInformation', player.id, player.username, player.playingFor!, false)
+  }
+});
+
 socketHandler.on('clientUpdate', (socketId, gameId: number, boardId: number, squareId: number, updatedPiece: BoardPiece) => {
   try {
     const player = connectedPlayers.get(socketId)!;
@@ -138,10 +161,13 @@ socketHandler.on('clientUpdate', (socketId, gameId: number, boardId: number, squ
 
       if (gameWinner !== null) {
         if (gameWinner !== BoardPiece.DRAW) {
+          console.log("GAME DRAW! ", gameWinningLine)
           player.score += ScoreValues.WIN_GAME;
+        } else {
+          console.log("WINNER WINNER ", gameWinningLine)
         }
         
-        console.log("WINNER WINNER ", gameWinningLine)
+        
         latestGame.winner = winner;
         latestGame.winningLine = winningLine;
         latestGame.winnerUsername = connectedPlayers.get(socketId)?.username!;
