@@ -22,24 +22,14 @@ enum ScoreValues {
   WIN_GAME = 1000,
 }
 
-
-
 socketHandler.on('playerConnected', (socketId, ipAddress, authUsername) => {
   let shellPlayer: Player;
   let playerFromLookup: Player | undefined = Array.from(playerHistory.values()).find((player) => player.username === authUsername);
 
-  const onCanSendEmotes = () => {
-    const connectedPlayer = connectedPlayers.get(socketId);
-
-    if (connectedPlayer) {
-      socketHandler.sendEvent(socketId, 'playerInformation', connectedPlayer.id, connectedPlayer.username, connectedPlayer.playingFor!, true);
-    }
-  }
-
   if (authUsername && ipOwnsUsername(ipAddress, authUsername)) {
-    shellPlayer = new Player(playerHistory.size, ipAddress, onCanSendEmotes, authUsername);
+    shellPlayer = new Player(playerHistory.size, ipAddress, authUsername);
   } else {
-    shellPlayer = new Player(playerHistory.size, ipAddress, onCanSendEmotes);
+    shellPlayer = new Player(playerHistory.size, ipAddress);
 
     // Invalidate their access if the username wasn't allowed (IP mismatch);
     playerFromLookup = undefined;
