@@ -5,13 +5,14 @@ import Player from './Player';
 import { searchWinner as searchWinner, generatePositionsFromBoards } from './utils';
 
 import badWords from './somebadwords';
+import { PlayerConnector } from './PlayerConnector';
 
 const SEND_HISTORY_LENGTH = config.SEND_HISTORY_LENGTH;
-const MAX_EMOTES_PER_10S = 3;
-const RESET_DELAY = 15000;
+const MAX_EMOTES_PER_10S = config.MAX_EMOTES_PER_10S;
+const RESET_DELAY = config.RESET_DELAY;
 
 let games: Array<Game> = [];
-const playerHistory: Map<string, Player> = new Map();
+const playerHistory: Array<Player> = [];
 const connectedPlayers: Map<string, Player> = new Map();
 
 const socketHandler = new SocketHandler();
@@ -21,6 +22,18 @@ enum ScoreValues {
   WIN_BOARD = 200,
   WIN_GAME = 1000,
 }
+
+async function init() {
+  const playerConnector = new PlayerConnector(config.mysql.host, config.mysql.user, config.mysql.password, config.mysql.databse);
+  await playerConnector.connect();
+
+  const playersToRestore = await playerConnector.getPlayers();
+  playersToRestore.forEach((player) => {
+    playerHistory.push(new Player(player.userId, player.ipAddress, player.username, player.score, player.playingFor));
+  });
+}
+
+init();
 
 socketHandler.on('playerConnected', (socketId, ipAddress, authUsername) => {
   let shellPlayer: Player;
@@ -156,7 +169,6 @@ socketHandler.on('clientUpdate', (socketId, gameId: number, boardId: number, squ
         } else {
           console.log("WINNER WINNER ", gameWinningLine)
         }
-        
         
         latestGame.winner = winner;
         latestGame.winningLine = winningLine;
