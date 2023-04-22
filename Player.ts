@@ -1,26 +1,24 @@
 import { BoardPiece } from "./types/GameTypes";
 
 class Player {
-  id: number;
-  ipAddr: string;
+  uuid: string;
+  ipAddress: string;
   username: string | null;
-  playingFor: BoardPiece | null;
+  playingFor: BoardPiece;
   score: number;
-  emotesPerLargeInterval: number;
+  emotesPerInterval: number;
 
-  constructor(id: number, ipAddr: string, username?: string) {
-    this.id = id;
-    this.ipAddr = ipAddr;
-
-    this.username = username || null;
-    this.playingFor = null;
-
-    this.score = 0;
+  constructor(uuid: string, ipAddress: string, score: number, playingFor: BoardPiece, username: string | null) {
+    this.uuid = uuid;
+    this.ipAddress = ipAddress;
+    this.score = score;
+    this.playingFor = playingFor;
+    this.username = username;
     
-    this.emotesPerLargeInterval = 0;
+    this.emotesPerInterval = 0;
     // Ideally this interval would be based on the timing that they send an emote, not a fixed starting point.
     setInterval(() => {
-      this.emotesPerLargeInterval = 0;
+      this.emotesPerInterval = 0;
     }, 10000);
   }
 }

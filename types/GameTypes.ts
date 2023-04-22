@@ -15,7 +15,7 @@ export type Game = {
 };
 
 export type SanitizedPlayer = {
-  id: number;
+  uuid: string;
   username: string | null;
   playingFor: BoardPiece;
   score: number;
