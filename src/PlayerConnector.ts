@@ -1,6 +1,5 @@
 import mysql, { Connection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import { BoardPiece } from './types/GameTypes';
-import Player from './Player';
 
 export class PlayerConnector {
   private connection: Connection | null;
