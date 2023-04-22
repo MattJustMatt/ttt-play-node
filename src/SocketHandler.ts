@@ -57,12 +57,12 @@ class SocketHandler extends EventEmitter {
 }
 
 export interface ServerToClientEvents {
-  playerInformation: (id: number, username: string | null, playingFor: BoardPiece, allowedToSendEmote: boolean) => void;
+  playerInformation: (uuid: string, username: string | null, playingFor: BoardPiece) => void;
   history: (gameHistory: Array<Game>) => void;
   playerList: (playerList: Array<SanitizedPlayer>) => void;
   update: (gameId: number, boardId: number, squareId: number, updatedPiece: BoardPiece) => void;
   end: (gameId: number, boardId: number | null, winner: BoardPiece, winningLine: Array<number> | null, winnerUsername: string) => void;
-  emote: (playerId: number, emoteSlug: string) => void;
+  emote: (playerUuid: string, emoteSlug: string) => void;
 }
 
 export interface ClientToServerEvents {
