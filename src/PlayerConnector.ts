@@ -1,8 +1,9 @@
 import mysql, { Connection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import { BoardPiece } from './types/GameTypes';
+import { Pool } from 'mysql2/promise';
 
 export class PlayerConnector {
-  private connection: Connection | null;
+  private connection: Pool | null;
   private host: string;
   private username: string;
   private password: string;
@@ -18,11 +19,14 @@ export class PlayerConnector {
   }
 
   async connect() {
-    this.connection = await mysql.createConnection({
+    this.connection = mysql.createPool({
       host: this.host,
       user: this.username,
       password: this.password,
-      database: this.database
+      database: this.database,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0
     });
   }
 
@@ -31,7 +35,7 @@ export class PlayerConnector {
   }
 
   private isConnected() {
-    return this.connection !== null;
+    return this.connection !== undefined;
   }
 
   async getPlayers(): Promise<UserStub[]> {

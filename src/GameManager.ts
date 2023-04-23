@@ -96,7 +96,6 @@ export async function init() {
 
         connectedPlayer.username = requestedUsername;
         playerHistory.push(connectedPlayer);
-        console.log(Array.from(connectedPlayers.values()).includes(connectedPlayer));
         playerConnector.insertPlayer(connectedPlayer.uuid, connectedPlayer.username, connectedPlayer.ipAddress, connectedPlayer.score, connectedPlayer.playingFor, true);
       } else {
         // Renaming flow (no existing username matches the requested one too)
