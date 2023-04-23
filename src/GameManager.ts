@@ -210,7 +210,7 @@ export async function init() {
   const ipOwnsUsername = (requesterIpAddress: string, username: string) => {
     let playerWithUsername = Array.from(playerHistory.values()).find((player) => player.username?.toLowerCase() === username.toLowerCase());
     if (!playerWithUsername) {
-      console.log(`[AUTH] Player@${requesterIpAddress} sent header requesting ${username} but they were not found in local player array`);
+      console.log(`[AUTH] Player with IP ${requesterIpAddress} sent header requesting username ${username} but they were not found in local player array`);
       return false;
     }
     
