@@ -138,7 +138,7 @@ export async function init() {
   socketHandler.on('clientUpdate', (socketId, gameId: number, boardId: number, squareId: number, updatedPiece: BoardPiece) => {
     try {
       const player = connectedPlayers.get(socketId)!;
-      if (player.username === null) throw new Error(`Player socket ${socketId} with iP ${player.ipAddress} sent an update without a username (bot?)`);
+      if (player.username === undefined) throw new Error(`Player socket ${socketId} with iP ${player.ipAddress} sent an update without a username (bot?)`);
   
       if (games.length === 0) throw new Error("Received client update, but there were no games to update");
       const latestGame = games[games.length-1];
