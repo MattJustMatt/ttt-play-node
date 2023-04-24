@@ -157,7 +157,7 @@ export async function init() {
   
       player.score += ScoreValues.ANY_MOVE;
       playerConnector.updateScore(player.uuid, player.score);
-      socketHandler.broadcastEvent('update', latestGame.id, boardId, squareId, updatedPiece);
+      socketHandler.broadcastEvent('update', latestGame.id, boardId, squareId, updatedPiece, player.username!);
   
       const [winner, winningLine] = searchWinner(boardToUpdate.positions);
       if (winner !== null) {
