@@ -67,6 +67,12 @@ export async function init() {
   });
 
   socketHandler.on('requestUsername', (socketId: string, requestedUsername: string, respond: (response: { code: number, message: string}) => void) => {
+    if (!requestedUsername) {
+      console.log(`[AUTH] socket ${socketId} requested an empty username`);
+      respond({ code: 400, message: "Requested username was empty"});
+      return;
+    }
+
     const userFromPlayerHistory = Array.from(playerHistory.values()).find((player) => player.username?.toLowerCase() === requestedUsername.toLowerCase())
     let connectedPlayer = connectedPlayers.get(socketId)!;
 
@@ -141,16 +147,18 @@ export async function init() {
       if (player.username === undefined) throw new Error(`Player socket ${socketId} with iP ${player.ipAddress} sent an update without a username (bot?)`);
   
       if (games.length === 0) throw new Error("Received client update, but there were no games to update");
+      
       const latestGame = games[games.length-1];
   
       if (latestGame.winner !== null) throw new Error("Move attempted on ended game");
       if (!latestGame.boards[boardId]) throw new Error(`Requested update on game ${latestGame.id} but board ${ boardId } did not exist`);
       let boardToUpdate = latestGame.boards[boardId];
+      if (boardToUpdate.winner !== null) throw new Error("Move requested on ended board");
   
       if (boardToUpdate.positions[squareId] !== 0) throw new Error(`Requested update on game ${latestGame.id} board ${boardToUpdate.id} square ${ squareId } but it was already occupied (${boardToUpdate.positions[squareId]})`);
       if (updatedPiece !== latestGame.nextPiece) throw new Error(`Invalid board piece requested. ${latestGame.nextPiece} should've been the next piece but ${updatedPiece} was requested`);
       if (player.playingFor !== updatedPiece) throw new Error(`Player ${player.ipAddress}@${socketId} sent update for piece ${updatedPiece} that wasn't theres! ${player.playingFor}`);
-      
+    
       // -- From here on out the move is assumed to be valid -- //
       boardToUpdate.positions[squareId] = updatedPiece;
       latestGame.nextPiece = latestGame.nextPiece === BoardPiece.X ? BoardPiece.O : BoardPiece.X;
