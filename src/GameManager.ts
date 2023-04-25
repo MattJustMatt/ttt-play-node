@@ -47,7 +47,7 @@ export async function init() {
     let connectingPlayer: Player;
     if (playerFromLookup) {
         connectingPlayer = playerFromLookup;
-        console.log(`[PLAYER MANAGER] Player (${connectingPlayer.username}@${connectingPlayer.ipAddress}) is returning!`);
+        console.log(`[PLAYER MANAGER] (${connectingPlayer.username}@${connectingPlayer.ipAddress}) is returning!`);
     } else {
       connectingPlayer = new Player(uuidv1(), connectingIP, 0, getBoardPieceForNewPlayer(), authUsername);
       console.log(`[PLAYER MANAGER] ${socketId}@${connectingIP} is NEW! Assigned piece ${connectingPlayer.playingFor === BoardPiece.X ? 'X' : 'O'}`);
@@ -150,14 +150,14 @@ export async function init() {
       
       const latestGame = games[games.length-1];
   
-      if (latestGame.winner !== null) throw new Error("Move attempted on ended game");
+      if (latestGame.winner !== null) throw new Error(`Move attempted by ${player.username} on ended game`);
       if (!latestGame.boards[boardId]) throw new Error(`Requested update on game ${latestGame.id} but board ${ boardId } did not exist`);
       let boardToUpdate = latestGame.boards[boardId];
-      if (boardToUpdate.winner !== null) throw new Error("Move requested on ended board");
+      if (boardToUpdate.winner !== null) throw new Error(`Move requested by ${ player.username } on ended board`);
   
       if (boardToUpdate.positions[squareId] !== 0) throw new Error(`Requested update on game ${latestGame.id} board ${boardToUpdate.id} square ${ squareId } but it was already occupied (${boardToUpdate.positions[squareId]})`);
-      if (updatedPiece !== latestGame.nextPiece) throw new Error(`Invalid board piece requested. ${latestGame.nextPiece} should've been the next piece but ${updatedPiece} was requested`);
-      if (player.playingFor !== updatedPiece) throw new Error(`Player ${player.ipAddress}@${socketId} sent update for piece ${updatedPiece} that wasn't theres! ${player.playingFor}`);
+      if (updatedPiece !== latestGame.nextPiece) throw new Error(`Invalid board piece requested by ${player.username}. ${latestGame.nextPiece} should've been the next piece but ${updatedPiece} was requested`);
+      if (player.playingFor !== updatedPiece) throw new Error(`Player ${player.ipAddress}@${socketId} (${player.username}) sent update for piece ${updatedPiece} that wasn't theres! ${player.playingFor}`);
     
       // -- From here on out the move is assumed to be valid -- //
       boardToUpdate.positions[squareId] = updatedPiece;
